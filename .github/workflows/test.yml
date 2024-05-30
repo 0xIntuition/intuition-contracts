@@ -1,0 +1,51 @@
+name: test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
+
+concurrency:
+  group: ci-${{ github.ref }}-tests
+  cancel-in-progress: true
+
+env:
+  FOUNDRY_PROFILE: "ci"
+
+jobs:
+  check:
+    strategy:
+      fail-fast: true
+
+    name: Foundry project
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Install deps
+        run: |
+          npm i
+          forge install
+
+      #- name: Run Forge build
+      #  run: |
+      #    forge build --sizes
+
+      - name: Run fmt check
+        run: |
+          npm run fmt:check
+
+      - name: Run Forge tests
+        run: |
+          forge test -vvv

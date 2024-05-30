@@ -1,0 +1,12 @@
+ds-test/=lib/forge-std/lib/ds-test/src/
+forge-std/=lib/openzeppelin-foundry-upgrades/lib/forge-std/src/
+solmate/=lib/solmate/src/
+solady/=lib/solady/src/
+council/=lib/council/contracts/
+opengsn/=node_modules/@opengsn/
+account-abstraction/=node_modules/@account-abstraction/
+@account-abstraction/=node_modules/@account-abstraction/
+@openzeppelin/=node_modules/@openzeppelin/
+hardhat/=node_modules/hardhat/
+@openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/
+openzeppelin-foundry-upgrades=lib/openzeppelin-foundry-upgrades/src/
