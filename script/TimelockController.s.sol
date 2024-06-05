@@ -2,7 +2,7 @@
 pragma solidity ^0.8.21;
 
 import {IEthMultiVault} from "src/interfaces/IEthMultiVault.sol";
-import {EthMultiVaultV2} from "../test/EthMultiVaultV2.sol";
+import {EthMultiVaultV2} from "./test/EthMultiVaultV2.sol";
 import {Script, console} from "forge-std/Script.sol";
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
@@ -74,7 +74,7 @@ contract TimelockControllerParametersScript is Script {
         uint256 delay = 5 minutes;
 
         bytes memory initData = abi.encodeWithSelector(
-            EthMultiVaultV2.initialize.selector, generalConfig, atomConfig, tripleConfig, walletConfig, vaultFees
+            EthMultiVaultV2.init.selector, generalConfig, atomConfig, tripleConfig, walletConfig, vaultFees
         );
 
         bytes memory timelockControllerData = abi.encodeWithSelector(

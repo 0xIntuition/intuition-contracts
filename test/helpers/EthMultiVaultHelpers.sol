@@ -155,7 +155,7 @@ abstract contract EthMultiVaultHelpers is Test, EthMultiVaultBase {
         uint256 value, // msg.value
         uint256 totalAssetsBefore,
         uint256 totalSharesBefore
-    ) public view {
+    ) public {
         uint256 sharesForZeroAddress = getMinShare();
         uint256 sharesForAtomWallet = getAtomWalletInitialDepositAmount();
         uint256 userDeposit = value - getAtomCost();
@@ -181,7 +181,7 @@ abstract contract EthMultiVaultHelpers is Test, EthMultiVaultBase {
         uint256 value,
         uint256 totalAssetsBefore,
         uint256 totalSharesBefore
-    ) public view {
+    ) public {
         // calculate expected total assets delta
         uint256 userDeposit = value - getTripleCost();
         uint256 protocolDepositFee = protocolFeeAmount(userDeposit, id);
@@ -211,7 +211,7 @@ abstract contract EthMultiVaultHelpers is Test, EthMultiVaultBase {
         uint256 id,
         uint256 userDeposit,
         uint256 protocolVaultBalanceBefore
-    ) public view {
+    ) public {
         // calculate expected protocol vault balance delta
         uint256 protocolVaultBalanceDeltaExpected = getAtomCreationProtocolFee() + getProtocolFeeAmount(userDeposit, id);
 
@@ -224,7 +224,7 @@ abstract contract EthMultiVaultHelpers is Test, EthMultiVaultBase {
         uint256[] memory ids,
         uint256 valuePerAtom,
         uint256 protocolVaultBalanceBefore
-    ) public view {
+    ) public {
         uint256 length = ids.length;
         uint256 protocolFees;
 
@@ -241,7 +241,7 @@ abstract contract EthMultiVaultHelpers is Test, EthMultiVaultBase {
         assertEq(protocolVaultBalanceDeltaExpected, protocolVaultBalanceDeltaGot);
     }
 
-    function checkProtocolVaultBalance(uint256 id, uint256 assets, uint256 protocolVaultBalanceBefore) public view {
+    function checkProtocolVaultBalance(uint256 id, uint256 assets, uint256 protocolVaultBalanceBefore) public {
         // calculate expected protocol vault balance delta
         uint256 protocolVaultBalanceDeltaExpected = getProtocolFeeAmount(assets, id);
 

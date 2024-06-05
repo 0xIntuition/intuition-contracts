@@ -1264,6 +1264,13 @@ contract EthMultiVaultV2 is IEthMultiVault, Initializable, ReentrancyGuardUpgrad
         tripleConfig.tripleCreationProtocolFee = tripleCreationProtocolFee;
     }
 
+    /// @dev sets the atom deposit fraction on triple creation used to increase the amount of assets
+    ///      in the underlying atom vaults on triple creation
+    /// @param atomDepositFractionOnTripleCreation new atom deposit fraction on triple creation
+    function setAtomDepositFractionOnTripleCreation(uint256 atomDepositFractionOnTripleCreation) external onlyAdmin {
+        tripleConfig.atomDepositFractionOnTripleCreation = atomDepositFractionOnTripleCreation;
+    }
+
     /// @dev sets the atom deposit fraction percentage for atoms used in triples
     ///      (number to be divided by `generalConfig.feeDenominator`)
     /// @param atomDepositFractionForTriple new atom deposit fraction percentage
@@ -1278,7 +1285,7 @@ contract EthMultiVaultV2 is IEthMultiVault, Initializable, ReentrancyGuardUpgrad
     /// @param entryFee entry fee to set
     function setEntryFee(uint256 id, uint256 entryFee) external onlyAdmin {
         if (entryFee > generalConfig.feeDenominator) {
-            revert Errors.MultiVault_InvalidFeeSet();
+            revert Errors.MultiVault_InvalidEntryFee();
         }
 
         vaultFees[id].entryFee = entryFee;
@@ -1319,7 +1326,7 @@ contract EthMultiVaultV2 is IEthMultiVault, Initializable, ReentrancyGuardUpgrad
     /// @param protocolFee protocol fee to set
     function setProtocolFee(uint256 id, uint256 protocolFee) external onlyAdmin {
         if (protocolFee > generalConfig.feeDenominator) {
-            revert Errors.MultiVault_InvalidFeeSet();
+            revert Errors.MultiVault_InvalidProtocolFee();
         }
 
         vaultFees[id].protocolFee = protocolFee;

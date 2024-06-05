@@ -80,13 +80,13 @@ library Utils {
         );
         string memory artifactJson = vm.readFile(artifactPath);
 
-        if (!vm.keyExistsJson(artifactJson, ".ast")) {
+        if (!vm.keyExists(artifactJson, ".ast")) {
             revert(
                 string.concat("Could not find AST in artifact ", artifactPath, ". Set `ast = true` in foundry.toml")
             );
         }
         info.contractPath = vm.parseJsonString(artifactJson, ".ast.absolutePath");
-        if (vm.keyExistsJson(artifactJson, ".ast.license")) {
+        if (vm.keyExists(artifactJson, ".ast.license")) {
             info.license = vm.parseJsonString(artifactJson, ".ast.license");
         }
         info.sourceCodeHash = vm.parseJsonString(
@@ -137,7 +137,7 @@ library Utils {
     /**
      * @dev Gets the output directory from the FOUNDRY_OUT environment variable, or defaults to "out" if not set.
      */
-    function getOutDir() internal view returns (string memory) {
+    function getOutDir() internal returns (string memory) {
         Vm vm = Vm(CHEATCODE_ADDRESS);
 
         string memory defaultOutDir = "out";

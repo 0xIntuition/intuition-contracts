@@ -441,7 +441,7 @@ library Upgrades {
         string memory contractName,
         Options memory opts,
         bool requireReference
-    ) private view returns (string[] memory) {
+    ) private returns (string[] memory) {
         string memory outDir = Utils.getOutDir();
 
         string[] memory inputBuilder = new string[](255);
