@@ -1,12 +1,48 @@
-## Instructions
+# Intuition Protocol
 
-### PreRequisites
+Intuition is an Ethereum-based attestation protocol harnessing the wisdom of the crowds to create an open knowledge and reputation graph. Our infrastructure makes it easy for applications and their users to capture, explore, and curate verifiable data. We’ve prioritized making developer integrations easy and have implemented incentive structures that prioritize ‘useful’ data and discourage spam.
 
+In bringing this new data layer to the decentralized web, we’re opening the flood gates to countless new use cases that we believe will kick off a consumer application boom.
+
+The Intuition Knowledge Graph will be recognized as an organic flywheel, where the more developers that implement it, the more valuable the data it houses becomes.
+
+## Getting Started
+- [Intuition Protocol](#intuition-protocol)
+  - [Getting Started](#getting-started)
+  - [Branching](#branching)
+  - [Documentation](#documentation)
+  - [Building and Running Tests](#building-and-running-tests)
+    - [Prerequisites](#prerequisites)
+    - [Step by Step Guide](#step-by-step-guide)
+      - [Install Dependencies](#install-dependencies)
+      - [Build](#build)
+      - [Run Tests](#run-tests)
+    - [Deployment Process](#deployment-process)
+    - [Deployment Verification](#deployment-verification)
+
+## Branching
+
+The main branches we use are:
+- [main (default)](https://github.com/0xIntuition/intuition-contracts/tree/main): The most up-to-date branch, containing the work-in-progress code for upcoming releases
+- [tob-audit](https://github.com/0xIntuition/intuition-contracts/tree/tob-audit): The snapshot of the code that was audited by Trail of Bits in March and April 2024
+
+## Documentation
+
+To get a basic understanding of the Intuition protocol, please check out the following:
+- [Official Website](https://intuition.systems)
+- [Official Documentation](https://docs.intuition.systems)
+- [Deep Dive into Our Smart Contracts](https://intuition.gitbook.io/intuition-contracts)
+
+## Building and Running Tests
+
+To build the project and run tests, follow these steps:
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/en/download/)
 - [Foundry](https://getfoundry.sh)
-- (Optional) [VSCode Hardhat Solidity Plugin](https://marketplace.visualstudio.com/items?itemName=NomicFoundation.hardhat-solidity)
-- (Optional) [VSCode Coverage Gutters](https://marketplace.visualstudio.com/items?itemName=ryanluker.vscode-coverage-gutters)
 
-### Local Development
+### Step by Step Guide
 
 #### Install Dependencies
 
@@ -30,35 +66,23 @@ $ forge test -vvv
 ### Deployment Process
 
 To deploy the v1 smart contract system on to a public testnet or mainnet, you’ll need the following:
-- RPC URL of the network that you’re trying to deploy to (as for us, we’re targeting Base Sepolia testnet as our target chain in the testnet phase)
-- Export private key of a deployer account in the terminal, and fund it with some test ETH to be able to cover the gas fees for the smart contract deployments
-- For Base Sepolia, there is a reliable [testnet faucet](https://www.alchemy.com/faucets/base-sepolia) deployed by Alchemy
+- RPC URL of the network that you’re trying to deploy to (as for us, we’re targeting Base Sepolia testnet as our target chain for the testnet deployments)
+- Export `PRIVATE_KEY` of a deployer account in the terminal, and fund it with some test ETH to be able to cover the gas fees for the smart contract deployments
+- For Base Sepolia, there is a reliable [testnet faucet](https://alchemy.com/faucets/base-sepolia) deployed by Alchemy
 - Deploy smart contracts using the following command:
 
 ```shell
-$ forge script script/DeployV1.s.sol --broadcast --rpc-url <your_rpc_url> --private-key $PRIVATE_KEY
+$ forge script script/Deploy.s.sol --broadcast --rpc-url <your_rpc_url> --private-key $PRIVATE_KEY
 ```
 
 ### Deployment Verification
 
-To verify the deployed smart contracts on Etherscan, you’ll need to export your Etherscan API key as `ETHERSCAN_API_KEY` in the terminal, and then run the following command:
+To verify the deployed smart contracts on Basescan, you’ll need to export your Basescan API key as `ETHERSCAN_API_KEY` in the terminal, and then run the following command:
 
 ```shell
 $ forge verify-contract <0x_contract_address> ContractName --watch --chain-id <chain_id>
 ```
 
 **Notes:**
-- You can use an optional parameter `--constructor-args` to pass the constructor arguments of the smart contract in the ABI-encoded format
-- The chain ID for Base Sepolia is `84532`.
-
-### Latest Deployments
-
-<details>
-
-<summary>Base Sepolia</summary>
-
-- [AtomWallet implementation](https://sepolia.basescan.org/address/0x67601BcddCD15C1da7dbb449ec196b9eAc84A4c6)
-- [AtomWalletBeacon](https://sepolia.basescan.org/address/0x9fBb10f4027f001c12086f98CE5145B694B4016C)
-- [EthMultiVault implementation](https://sepolia.basescan.org/address/0x54d9e246D1DE5ff8bF196d5585D5D625Def86871)
-- [EthMultiVault proxy](https://sepolia.basescan.org/address/0x2a30dCDAd9fe511A358F5C99060068956c00edb4)
-- [ProxyAdmin](https://sepolia.basescan.org/address/0x76A44BaDDD4c490273E7D39D0276CfFAaC6eD275)
+- When verifying your smart contracts, you can use an optional parameter `--constructor-args` to pass the constructor arguments of the smart contract in the ABI-encoded format
+- The chain ID for Base Sepolia is `84532`, whereas the chain ID for Base Mainnet is `8453`
