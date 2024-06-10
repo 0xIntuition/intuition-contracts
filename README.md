@@ -11,6 +11,7 @@ The Intuition Knowledge Graph will be recognized as an organic flywheel, where t
   - [Getting Started](#getting-started)
   - [Branching](#branching)
   - [Documentation](#documentation)
+    - [Known Nuances](#known-nuances)
   - [Building and Running Tests](#building-and-running-tests)
     - [Prerequisites](#prerequisites)
     - [Step by Step Guide](#step-by-step-guide)
@@ -34,6 +35,12 @@ To get a basic understanding of the Intuition protocol, please check out the fol
 - [Official Website](https://intuition.systems)
 - [Official Documentation](https://docs.intuition.systems)
 - [Deep Dive into Our Smart Contracts](https://intuition.gitbook.io/intuition-contracts)
+
+### Known Nuances 
+
+- Share prices are weird, but elegantly achieve our desired functionality - which is, Users earn fee revenue when they are shareholders of a vault and other users deposit/redeem from the vault while they remain shareholders. This novel share price mechanism is used in lieu of a side-pocket reward pool for gas efficiency.
+  - For example: User A deposits 1 ETH into a vault with a share price of 1 ETH. There is a 5% entry fee applied. User receives 0.95 shares. Assuming no other depositors in the vault, the Vault now has 1 ETH and 0.95 shares outstanding -> share price is now 1.052.
+  - User A now redeems their shares from the pool, paying a 5% exit fee to the vault. The vault now has 0.05 ETH and 0 shares; for this reason, we mint some number of 'ghost shares' to the 0 address upon vault instantiation, so that the number of outstanding shares will never be 0; however, because of the small number of outstanding 'ghost' shares, share price becomes arbitrarily high because of the large discrepancy between [Oustanding Shares] and [Assets in the Vault]. 
 
 ## Building and Running Tests
 
@@ -92,3 +99,10 @@ $ forge verify-contract <0x_contract_address> ContractName --watch --chain-id <c
 ## Deployments
 
 ### Base Sepolia Testnet
+
+| Name | Proxy | Implementation | Notes |
+| -------- | -------- | -------- | -------- |
+| [`AtomWallet`](https://github.com/0xIntuition/intuition-contracts/blob/tob-audit/src/AtomWallet.sol) | [`0x69eaaae77Fb6be0D3c423fe5e5A982d53a1C8CBc`](https://sepolia.basescan.org/address/0x69eaaae77Fb6be0D3c423fe5e5A982d53a1C8CBc) | [`0xDF0d74A6325082b9E6041e4A5F8a6d52E0e8de46`](https://sepolia.basescan.org/address/0xDF0d74A6325082b9E6041e4A5F8a6d52E0e8de46) | AtomWalletBeacon: [`BeaconProxy`](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.0.2/contracts/proxy/beacon/BeaconProxy.sol) <br /> Atom Wallets: [`UpgradeableBeacon`](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.0.2/contracts/proxy/beacon/UpgradeableBeacon.sol) |
+| [`EthMultiVault`](https://github.com/0xIntuition/intuition-contracts/blob/tob-audit/src/EthMultiVault.sol) | [`0x61200E985eF40c676b58Ac42012Fa924981d88FB`](https://sepolia.basescan.org/address/0x61200E985eF40c676b58Ac42012Fa924981d88FB) | [`0x43eF3B52BE0DDD1112E87d0ea492d9eF38786659`](https://sepolia.basescan.org/address/0x43eF3B52BE0DDD1112E87d0ea492d9eF38786659) | Proxy: [`TUP@5.0.2`](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.0.2/contracts/proxy/transparent/TransparentUpgradeableProxy.sol) |
+| [`ProxyAdmin`](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.0.2/contracts/proxy/transparent/ProxyAdmin.sol) | - | [`0x8e2b6ad9B28d5e239EE779814b23d4766A9a3600`](https://sepolia.basescan.org/address/0x8e2b6ad9B28d5e239EE779814b23d4766A9a3600) | Used for upgrading `EthMultiVault` proxy contract |
+| [`TimelockController`](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.0.2/contracts/governance/TimelockController.sol) | - | [`0xd75B08Ff002BE0B1ce43A91aE6Eabf5Ef04ec8ab`](https://sepolia.basescan.org/address/0xd75B08Ff002BE0B1ce43A91aE6Eabf5Ef04ec8ab) | Owner of the `ProxyAdmin` and `AtomWalletBeacon` |
