@@ -38,7 +38,7 @@ To get a basic understanding of the Intuition protocol, please check out the fol
 
 ### Known Nuances 
 
-- Share prices may get arbitrarily large as deposits/withdraws occur after Vault asset and share amounts approach 0 (ie if all users have withdrawn from the Vault), but this still elegantly achieves our desired functionality  - which is, Users earn fee revenue when they are shareholders of a vault and deposit/redeem activities occur while they remain shareholders. This novel share price mechanism is used in lieu of a side-pocket reward pool for gas efficiency.
+- Share prices may get arbitrarily large as deposits/withdraws occur after Vault asset and share amounts approach 0 (i.e. if all users have withdrawn from the Vault), but this still elegantly achieves our desired functionality  - which is, Users earn fee revenue when they are shareholders of a vault and deposit/redeem activities occur while they remain shareholders. This novel share price mechanism is used in lieu of a side-pocket reward pool for gas efficiency.
 - The Admin can pause the contracts, though there is an emergency withdraw that allows users to withdraw from the contract even while paused. This emergency withdraw bypasses all fees, to reduce the surface area of attack.
 - Exit fees are configurable, but have a maximum limit which they can be set to, preventing loss of user funds. Users also have the timelock window to withdraw from the contracts if they do not agree with a parameter change.
  
