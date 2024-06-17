@@ -468,13 +468,13 @@ contract EthMultiVault is IEthMultiVault, Initializable, ReentrancyGuardUpgradea
         uint256 protocolDepositFee = protocolFeeAmount(userDeposit, id);
 
         // calculate user deposit after protocol fees
-        uint256 userDepositAfterProtocolFees = userDeposit - protocolDepositFee;
+        uint256 userDepositAfterprotocolFee = userDeposit - protocolDepositFee;
 
         // deposit user funds into vault and mint shares for the user and shares for the zero address
         _depositOnVaultCreation(
             id,
             msg.sender, // receiver
-            userDepositAfterProtocolFees
+            userDepositAfterprotocolFee
         );
 
         // get atom wallet address for the corresponding atom
@@ -614,7 +614,7 @@ contract EthMultiVault is IEthMultiVault, Initializable, ReentrancyGuardUpgradea
         uint256 protocolDepositFee = protocolFeeAmount(userDeposit, id);
 
         // calculate user deposit after protocol fees
-        uint256 userDepositAfterProtocolFees = userDeposit - protocolDepositFee;
+        uint256 userDepositAfterprotocolFee = userDeposit - protocolDepositFee;
 
         // map the resultant triple hash to the new vault ID of the triple
         triplesByHash[hash] = id;
@@ -625,13 +625,13 @@ contract EthMultiVault is IEthMultiVault, Initializable, ReentrancyGuardUpgradea
         // set this new triple's vault ID as true in the IsTriple mapping as well as its counter
         isTriple[id] = true;
 
-        uint256 atomDepositFraction = atomDepositFractionAmount(userDepositAfterProtocolFees, id);
+        uint256 atomDepositFraction = atomDepositFractionAmount(userDepositAfterprotocolFee, id);
 
         // give the user shares in the positive triple vault
         _depositOnVaultCreation(
             id,
             msg.sender, // receiver
-            userDepositAfterProtocolFees - atomDepositFraction
+            userDepositAfterprotocolFee - atomDepositFraction
         );
 
         // deposit assets into each underlying atom vault and mint shares for the receiver
@@ -687,13 +687,13 @@ contract EthMultiVault is IEthMultiVault, Initializable, ReentrancyGuardUpgradea
             revert Errors.MultiVault_MinimumDeposit();
         }
 
-        uint256 protocolFees = protocolFeeAmount(msg.value, id);
-        uint256 userDepositAfterProtocolFees = msg.value - protocolFees;
+        uint256 protocolFee = protocolFeeAmount(msg.value, id);
+        uint256 userDepositAfterprotocolFee = msg.value - protocolFee;
 
         // deposit eth into vault and mint shares for the receiver
-        uint256 shares = _deposit(receiver, id, userDepositAfterProtocolFees);
+        uint256 shares = _deposit(receiver, id, userDepositAfterprotocolFee);
 
-        _transferFeesToProtocolVault(protocolFees);
+        _transferFeesToProtocolVault(protocolFee);
 
         return shares;
     }
@@ -720,7 +720,7 @@ contract EthMultiVault is IEthMultiVault, Initializable, ReentrancyGuardUpgradea
             withdraw shares from vault, returning the amount of
             assets to be transferred to the receiver
         */
-        (uint256 assets, uint256 protocolFees) = _redeem(id, msg.sender, shares);
+        (uint256 assets, uint256 protocolFee) = _redeem(id, msg.sender, shares);
 
         // transfer eth to receiver factoring in fees/shares
         (bool success,) = payable(receiver).call{value: assets}("");
@@ -728,7 +728,7 @@ contract EthMultiVault is IEthMultiVault, Initializable, ReentrancyGuardUpgradea
             revert Errors.MultiVault_TransferFailed();
         }
 
-        _transferFeesToProtocolVault(protocolFees);
+        _transferFeesToProtocolVault(protocolFee);
 
         return assets;
     }
@@ -766,16 +766,16 @@ contract EthMultiVault is IEthMultiVault, Initializable, ReentrancyGuardUpgradea
             revert Errors.MultiVault_MinimumDeposit();
         }
 
-        uint256 protocolFees = protocolFeeAmount(msg.value, id);
-        uint256 userDepositAfterProtocolFees = msg.value - protocolFees;
+        uint256 protocolFee = protocolFeeAmount(msg.value, id);
+        uint256 userDepositAfterprotocolFee = msg.value - protocolFee;
 
         // deposit eth into vault and mint shares for the receiver
-        uint256 shares = _deposit(receiver, id, userDepositAfterProtocolFees);
+        uint256 shares = _deposit(receiver, id, userDepositAfterprotocolFee);
 
-        _transferFeesToProtocolVault(protocolFees);
+        _transferFeesToProtocolVault(protocolFee);
 
         // distribute atom shares for all 3 atoms that underly the triple
-        uint256 atomDepositFraction = atomDepositFractionAmount(userDepositAfterProtocolFees, id);
+        uint256 atomDepositFraction = atomDepositFractionAmount(userDepositAfterprotocolFee, id);
         _depositAtomFraction(id, receiver, atomDepositFraction);
 
         return shares;
@@ -800,7 +800,7 @@ contract EthMultiVault is IEthMultiVault, Initializable, ReentrancyGuardUpgradea
             withdraw shares from vault, returning the amount of
             assets to be transferred to the receiver
         */
-        (uint256 assets, uint256 protocolFees) = _redeem(id, msg.sender, shares);
+        (uint256 assets, uint256 protocolFee) = _redeem(id, msg.sender, shares);
 
         // transfer eth to receiver factoring in fees/shares
         (bool success,) = payable(receiver).call{value: assets}("");
@@ -808,7 +808,7 @@ contract EthMultiVault is IEthMultiVault, Initializable, ReentrancyGuardUpgradea
             revert Errors.MultiVault_TransferFailed();
         }
 
-        _transferFeesToProtocolVault(protocolFees);
+        _transferFeesToProtocolVault(protocolFee);
 
         return assets;
     }
@@ -957,7 +957,7 @@ contract EthMultiVault is IEthMultiVault, Initializable, ReentrancyGuardUpgradea
     ///      Changes the vault's total assets, total shares and balanceOf mappings to reflect the withdrawal
     ///
     /// @return assetsForReceiver the amount of assets/eth to be transferred to the receiver
-    /// @return protocolFees the amount of protocol fees deducted
+    /// @return protocolFee the amount of protocol fees deducted
     function _redeem(uint256 id, address owner, uint256 shares) internal returns (uint256, uint256) {
         if (shares == 0) {
             revert Errors.MultiVault_DepositOrWithdrawZeroShares();
@@ -972,21 +972,21 @@ contract EthMultiVault is IEthMultiVault, Initializable, ReentrancyGuardUpgradea
             revert Errors.MultiVault_InsufficientRemainingSharesInVault(remainingShares);
         }
 
-        (, uint256 assetsForReceiver, uint256 protocolFees, uint256 exitFees) = getRedeemAssetsAndFees(shares, id);
+        (, uint256 assetsForReceiver, uint256 protocolFee, uint256 exitFee) = getRedeemAssetsAndFees(shares, id);
 
         // set vault totals (assets and shares)
         _setVaultTotals(
             id,
-            vaults[id].totalAssets - (assetsForReceiver + protocolFees), // totalAssetsDelta
+            vaults[id].totalAssets - (assetsForReceiver + protocolFee), // totalAssetsDelta
             vaults[id].totalShares - shares // totalSharesDelta
         );
 
         // burn shares, then transfer assets to receiver
         _burn(owner, id, shares);
 
-        emit Redeemed(msg.sender, owner, vaults[id].balanceOf[owner], assetsForReceiver, shares, exitFees, id);
+        emit Redeemed(msg.sender, owner, vaults[id].balanceOf[owner], assetsForReceiver, shares, exitFee, id);
 
-        return (assetsForReceiver, protocolFees);
+        return (assetsForReceiver, protocolFee);
     }
 
     /// @dev mint vault shares of vault ID `id` to address `to`
@@ -1066,12 +1066,12 @@ contract EthMultiVault is IEthMultiVault, Initializable, ReentrancyGuardUpgradea
     /// @return totalFees total fees that would be charged for depositing 'assets' into a vault
     function getDepositFees(uint256 assets, uint256 id) public view returns (uint256) {
         uint256 protocolFee = protocolFeeAmount(assets, id);
-        uint256 userAssetsAfterProtocolFees = assets - protocolFee;
+        uint256 userAssetsAfterprotocolFee = assets - protocolFee;
 
-        uint256 atomDepositFraction = atomDepositFractionAmount(userAssetsAfterProtocolFees, id);
-        uint256 userAssetsAfterProtocolFeesAndAtomDepositFraction = userAssetsAfterProtocolFees - atomDepositFraction;
+        uint256 atomDepositFraction = atomDepositFractionAmount(userAssetsAfterprotocolFee, id);
+        uint256 userAssetsAfterprotocolFeeAndAtomDepositFraction = userAssetsAfterprotocolFee - atomDepositFraction;
 
-        uint256 entryFee = entryFeeAmount(userAssetsAfterProtocolFeesAndAtomDepositFraction, id);
+        uint256 entryFee = entryFeeAmount(userAssetsAfterprotocolFeeAndAtomDepositFraction, id);
         uint256 totalFees = protocolFee + atomDepositFraction + entryFee;
 
         return totalFees;
@@ -1079,7 +1079,7 @@ contract EthMultiVault is IEthMultiVault, Initializable, ReentrancyGuardUpgradea
 
     /// @notice returns the shares for recipient and other important values when depositing 'assets' into a vault
     ///
-    /// @param assets amount of `assets` to calculate fees on (should always be msg.value - protocolFees)
+    /// @param assets amount of `assets` to calculate fees on (should always be msg.value - protocolFee)
     /// @param id vault id to get corresponding fees for
     ///
     /// @return totalAssetsDelta changes in vault's total assets
@@ -1122,8 +1122,8 @@ contract EthMultiVault is IEthMultiVault, Initializable, ReentrancyGuardUpgradea
     ///
     /// @return totalUserAssets total amount of assets user would receive if redeeming 'shares', not including fees
     /// @return assetsForReceiver amount of assets that is redeemable by the receiver
-    /// @return protocolFees amount of assets that would be sent to the protocol vault
-    /// @return exitFees amount of assets that would be charged for the exit fee
+    /// @return protocolFee amount of assets that would be sent to the protocol vault
+    /// @return exitFee amount of assets that would be charged for the exit fee
     function getRedeemAssetsAndFees(uint256 shares, uint256 id)
         public
         view
@@ -1132,8 +1132,8 @@ contract EthMultiVault is IEthMultiVault, Initializable, ReentrancyGuardUpgradea
         uint256 remainingShares = vaults[id].totalShares - shares;
 
         uint256 assetsForReceiverBeforeFees = convertToAssets(shares, id);
-        uint256 protocolFees;
-        uint256 exitFees;
+        uint256 protocolFee;
+        uint256 exitFee;
 
         /*
          * if the redeem amount results in a zero share balance for
@@ -1143,21 +1143,21 @@ contract EthMultiVault is IEthMultiVault, Initializable, ReentrancyGuardUpgradea
          * contract is paused), no exit fees are charged either.
          */
         if (paused()) {
-            exitFees = 0;
-            protocolFees = 0;
+            exitFee = 0;
+            protocolFee = 0;
         } else if (remainingShares == generalConfig.minShare) {
-            exitFees = 0;
-            protocolFees = protocolFeeAmount(assetsForReceiverBeforeFees, id);
+            exitFee = 0;
+            protocolFee = protocolFeeAmount(assetsForReceiverBeforeFees, id);
         } else {
-            protocolFees = protocolFeeAmount(assetsForReceiverBeforeFees, id);
-            uint256 assetsForReceiverAfterProtocolFees = assetsForReceiverBeforeFees - protocolFees;
-            exitFees = exitFeeAmount(assetsForReceiverAfterProtocolFees, id);
+            protocolFee = protocolFeeAmount(assetsForReceiverBeforeFees, id);
+            uint256 assetsForReceiverAfterprotocolFee = assetsForReceiverBeforeFees - protocolFee;
+            exitFee = exitFeeAmount(assetsForReceiverAfterprotocolFee, id);
         }
 
         uint256 totalUserAssets = assetsForReceiverBeforeFees;
-        uint256 assetsForReceiver = assetsForReceiverBeforeFees - exitFees - protocolFees;
+        uint256 assetsForReceiver = assetsForReceiverBeforeFees - exitFee - protocolFee;
 
-        return (totalUserAssets, assetsForReceiver, protocolFees, exitFees);
+        return (totalUserAssets, assetsForReceiver, protocolFee, exitFee);
     }
 
     /// @notice returns amount of assets that would be charged for the entry fee given an amount of 'assets' provided
@@ -1168,8 +1168,8 @@ contract EthMultiVault is IEthMultiVault, Initializable, ReentrancyGuardUpgradea
     /// @return feeAmount amount of assets that would be charged for the entry fee
     /// NOTE: if the vault being deposited on has a vault total shares of 0, the entry fee is not applied
     function entryFeeAmount(uint256 assets, uint256 id) public view returns (uint256) {
-        uint256 entryFees = vaultFees[id].entryFee;
-        uint256 feeAmount = _feeOnRaw(assets, entryFees == 0 ? vaultFees[0].entryFee : entryFees);
+        uint256 entryFee = vaultFees[id].entryFee;
+        uint256 feeAmount = _feeOnRaw(assets, entryFee == 0 ? vaultFees[0].entryFee : entryFee);
         return feeAmount;
     }
 
@@ -1182,8 +1182,8 @@ contract EthMultiVault is IEthMultiVault, Initializable, ReentrancyGuardUpgradea
     /// NOTE: if the vault  being redeemed from given the shares to redeem results in a total shares after of 0,
     ///       the exit fee is not applied
     function exitFeeAmount(uint256 assets, uint256 id) public view returns (uint256) {
-        uint256 exitFees = vaultFees[id].exitFee;
-        uint256 feeAmount = _feeOnRaw(assets, exitFees == 0 ? vaultFees[0].exitFee : exitFees);
+        uint256 exitFee = vaultFees[id].exitFee;
+        uint256 feeAmount = _feeOnRaw(assets, exitFee == 0 ? vaultFees[0].exitFee : exitFee);
         return feeAmount;
     }
 
@@ -1195,8 +1195,8 @@ contract EthMultiVault is IEthMultiVault, Initializable, ReentrancyGuardUpgradea
     ///
     /// @return feeAmount amount of assets that would be charged by vault on protocol fee
     function protocolFeeAmount(uint256 assets, uint256 id) public view returns (uint256) {
-        uint256 protocolFees = vaultFees[id].protocolFee;
-        uint256 feeAmount = _feeOnRaw(assets, protocolFees == 0 ? vaultFees[0].protocolFee : protocolFees);
+        uint256 protocolFee = vaultFees[id].protocolFee;
+        uint256 feeAmount = _feeOnRaw(assets, protocolFee == 0 ? vaultFees[0].protocolFee : protocolFee);
         return feeAmount;
     }
 
