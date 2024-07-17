@@ -2,10 +2,11 @@
 pragma solidity ^0.8.21;
 
 import "forge-std/Test.sol";
-import {EthMultiVault} from "../../../src/EthMultiVault.sol";
-import {EthMultiVaultBase} from "../../EthMultiVaultBase.sol";
-import {EthMultiVaultHelpers} from "../../helpers/EthMultiVaultHelpers.sol";
-import {Errors} from "../../../src/libraries/Errors.sol";
+
+import {Errors} from "src/libraries/Errors.sol";
+import {EthMultiVault} from "src/EthMultiVault.sol";
+import {EthMultiVaultBase} from "test/EthMultiVaultBase.sol";
+import {EthMultiVaultHelpers} from "test/helpers/EthMultiVaultHelpers.sol";
 
 contract AdminMultiVaultTest is EthMultiVaultBase, EthMultiVaultHelpers {
     function setUp() external {
@@ -68,7 +69,7 @@ contract AdminMultiVaultTest is EthMultiVaultBase, EthMultiVaultHelpers {
 
         // should revert if not admin
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(Errors.MultiVault_AdminOnly.selector));
+        vm.expectRevert(abi.encodeWithSelector(Errors.EthMultiVault_AdminOnly.selector));
         ethMultiVault.setAdmin(newAdmin);
 
         // Execute the scheduled operation
@@ -85,13 +86,13 @@ contract AdminMultiVaultTest is EthMultiVaultBase, EthMultiVaultHelpers {
         assertTrue(executed);
     }
 
-    function testSetProtocolVault() external {
+    function testSetProtocolMultisig() external {
         address testValue = bob;
 
         // msg.sender is the caller of EthMultiVaultBase
         vm.prank(msg.sender);
-        ethMultiVault.setProtocolVault(testValue);
-        assertEq(getProtocolVault(), testValue);
+        ethMultiVault.setProtocolMultisig(testValue);
+        assertEq(getProtocolMultisig(), testValue);
     }
 
     function testSetEntryFee() external {
@@ -101,7 +102,7 @@ contract AdminMultiVaultTest is EthMultiVaultBase, EthMultiVaultHelpers {
 
         // Attempt to set exit fee higher than allowed, should revert
         vm.prank(msg.sender);
-        vm.expectRevert(abi.encodeWithSelector(Errors.MultiVault_InvalidEntryFee.selector));
+        vm.expectRevert(abi.encodeWithSelector(Errors.EthMultiVault_InvalidEntryFee.selector));
         ethMultiVault.setEntryFee(testVaultId, invalidEntryFee);
 
         /// Sets a valid entry fee
@@ -132,7 +133,7 @@ contract AdminMultiVaultTest is EthMultiVaultBase, EthMultiVaultHelpers {
 
         // Attempt to set exit fee higher than allowed, should revert
         vm.prank(msg.sender);
-        vm.expectRevert(abi.encodeWithSelector(Errors.MultiVault_InvalidExitFee.selector));
+        vm.expectRevert(abi.encodeWithSelector(Errors.EthMultiVault_InvalidExitFee.selector));
         ethMultiVault.setExitFee(vaultId, invalidExitFee);
 
         // Set a valid exit fee
@@ -156,7 +157,7 @@ contract AdminMultiVaultTest is EthMultiVaultBase, EthMultiVaultHelpers {
 
         // Attempt to set protocol fee higher than allowed, should revert
         vm.prank(msg.sender);
-        vm.expectRevert(abi.encodeWithSelector(Errors.MultiVault_InvalidProtocolFee.selector));
+        vm.expectRevert(abi.encodeWithSelector(Errors.EthMultiVault_InvalidProtocolFee.selector));
         ethMultiVault.setProtocolFee(testVaultId, invalidProtocolFee);
 
         /// Sets a valid protocol fee
@@ -202,12 +203,18 @@ contract AdminMultiVaultTest is EthMultiVaultBase, EthMultiVaultHelpers {
     }
 
     function testSetAtomDepositFractionForTriple() external {
-        uint256 testValue = 1000;
+        uint256 validAtomDepositFractionForTriple = getFeeDenominator() / 10; // 10% of the deposit
+        uint256 invalidAtomDepositFractionForTriple = getFeeDenominator(); // 100% of the deposit
 
-        // msg.sender is the caller of EthMultiVaultBase
+        // Attempt to set atom deposit fraction higher than allowed, should revert
         vm.prank(msg.sender);
-        ethMultiVault.setAtomDepositFractionForTriple(testValue);
-        assertEq(getAtomDepositFraction(), testValue);
+        vm.expectRevert(abi.encodeWithSelector(Errors.EthMultiVault_InvalidAtomDepositFractionForTriple.selector));
+        ethMultiVault.setAtomDepositFractionForTriple(invalidAtomDepositFractionForTriple);
+
+        // Set a valid atom deposit fraction for triple
+        vm.prank(msg.sender);
+        ethMultiVault.setAtomDepositFractionForTriple(validAtomDepositFractionForTriple);
+        assertEq(getAtomDepositFraction(), validAtomDepositFractionForTriple);
     }
 
     function testSetMinDeposit() external {

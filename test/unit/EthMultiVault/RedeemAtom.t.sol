@@ -2,9 +2,10 @@
 pragma solidity ^0.8.21;
 
 import "forge-std/Test.sol";
-import {EthMultiVaultBase} from "../../EthMultiVaultBase.sol";
-import {EthMultiVaultHelpers} from "../../helpers/EthMultiVaultHelpers.sol";
-import {Errors} from "../../../src/libraries/Errors.sol";
+
+import {Errors} from "src/libraries/Errors.sol";
+import {EthMultiVaultBase} from "test/EthMultiVaultBase.sol";
+import {EthMultiVaultHelpers} from "test/helpers/EthMultiVaultHelpers.sol";
 
 contract RedeemAtomTest is EthMultiVaultBase, EthMultiVaultHelpers {
     function setUp() external {
@@ -35,7 +36,7 @@ contract RedeemAtomTest is EthMultiVaultBase, EthMultiVaultHelpers {
         ethMultiVault.depositAtom{value: testDepositAmount}(bob, id);
 
         // snapshots before redeem
-        uint256 protocolVaultBalanceBefore = address(getProtocolVault()).balance;
+        uint256 protocolMultisigBalanceBefore = address(getProtocolMultisig()).balance;
         uint256 userSharesBeforeRedeem = getSharesInVault(id, bob);
         uint256 userBalanceBeforeRedeem = address(bob).balance;
 
@@ -46,7 +47,7 @@ contract RedeemAtomTest is EthMultiVaultBase, EthMultiVaultHelpers {
         // execute interaction - redeem all atom shares for bob
         uint256 assetsForReceiver = ethMultiVault.redeemAtom(userSharesBeforeRedeem, bob, id);
 
-        checkProtocolVaultBalance(id, assetsForReceiverBeforeFees, protocolVaultBalanceBefore);
+        checkProtocolMultisigBalance(id, assetsForReceiverBeforeFees, protocolMultisigBalanceBefore);
 
         // snapshots after redeem
         uint256 userSharesAfterRedeem = getSharesInVault(id, bob);
@@ -79,7 +80,7 @@ contract RedeemAtomTest is EthMultiVaultBase, EthMultiVaultHelpers {
         // snapshots before redeem
         uint256 userSharesBeforeRedeem = getSharesInVault(id, alice);
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.MultiVault_VaultDoesNotExist.selector));
+        vm.expectRevert(abi.encodeWithSelector(Errors.EthMultiVault_VaultDoesNotExist.selector));
         // execute interaction - redeem all atom shares
         ethMultiVault.redeemAtom(userSharesBeforeRedeem, alice, id + 1);
 
@@ -102,7 +103,7 @@ contract RedeemAtomTest is EthMultiVaultBase, EthMultiVaultHelpers {
         // execute interaction - deposit atoms
         ethMultiVault.depositAtom{value: testDepositAmount}(alice, id);
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.MultiVault_DepositOrWithdrawZeroShares.selector));
+        vm.expectRevert(abi.encodeWithSelector(Errors.EthMultiVault_DepositOrWithdrawZeroShares.selector));
         // execute interaction - redeem all atom shares
         ethMultiVault.redeemAtom(0, alice, id);
 
@@ -132,7 +133,7 @@ contract RedeemAtomTest is EthMultiVaultBase, EthMultiVaultHelpers {
 
         vm.startPrank(bob, bob);
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.MultiVault_InsufficientSharesInVault.selector));
+        vm.expectRevert(abi.encodeWithSelector(Errors.EthMultiVault_InsufficientSharesInVault.selector));
         // execute interaction - redeem all atom shares
         ethMultiVault.redeemAtom(userSharesBeforeRedeem, bob, id);
 

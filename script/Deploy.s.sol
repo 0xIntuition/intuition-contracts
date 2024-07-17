@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.18;
+pragma solidity ^0.8.21;
 
 import {Script, console} from "forge-std/Script.sol";
-import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {
     TransparentUpgradeableProxy,
     ITransparentUpgradeableProxy
 } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 
+import {AtomWallet} from "src/AtomWallet.sol";
+import {CustomMulticall3} from "src/utils/CustomMulticall3.sol";
 import {EthMultiVault} from "src/EthMultiVault.sol";
 import {IEthMultiVault} from "src/interfaces/IEthMultiVault.sol";
-import {AtomWallet} from "src/AtomWallet.sol";
 import {IPermit2} from "src/interfaces/IPermit2.sol";
 
 contract DeployEthMultiVault is Script {
@@ -19,7 +20,7 @@ contract DeployEthMultiVault is Script {
 
     // Multisig addresses for key roles in the protocol (should be replaced with the actual multisig addresses for each role in the production)
     address admin = 0xEcAc3Da134C2e5f492B702546c8aaeD2793965BB; // Testnet multisig Safe address
-    address protocolVault = admin;
+    address protocolMultisig = admin;
     address atomWarden = admin;
 
     // Constants from Base
@@ -64,10 +65,10 @@ contract DeployEthMultiVault is Script {
 
         IEthMultiVault.GeneralConfig memory generalConfig = IEthMultiVault.GeneralConfig({
             admin: admin, // Admin address for the EthMultiVault contract
-            protocolVault: protocolVault, // Protocol vault address (should be a multisig in production)
+            protocolMultisig: protocolMultisig, // Protocol multisig address
             feeDenominator: 10000, // Common denominator for fee calculations
-            minDeposit: 0.0003 ether, // Minimum deposit amount in wei
-            minShare: 1e5, // Minimum share amount (e.g., for vault initialization)
+            minDeposit: 0.00069 ether, // Minimum deposit amount in wei
+            minShare: 1e6, // Minimum share amount (e.g., for vault initialization)
             atomUriMaxLength: 250, // Maximum length of the atom URI data that can be passed when creating atom vaults
             decimalPrecision: 1e18, // decimal precision used for calculating share prices
             minDelay: 1 days // minimum delay for timelocked transactions
@@ -80,21 +81,21 @@ contract DeployEthMultiVault is Script {
 
         IEthMultiVault.TripleConfig memory tripleConfig = IEthMultiVault.TripleConfig({
             tripleCreationProtocolFee: 0.0002 ether, // Fee for creating a triple
-            atomDepositFractionOnTripleCreation: 0.0003 ether, // Static fee going towards increasing the amount of assets in the underlying atom vaults
+            atomDepositFractionOnTripleCreation: 0.00003 ether, // Static fee going towards increasing the amount of assets in the underlying atom vaults
             atomDepositFractionForTriple: 1500 // Fee for equity in atoms when creating a triple
         });
 
         IEthMultiVault.WalletConfig memory walletConfig = IEthMultiVault.WalletConfig({
             permit2: IPermit2(address(permit2)), // Permit2 on Base
             entryPoint: entryPoint, // EntryPoint address on Base
-            atomWarden: atomWarden, // AtomWarden address (should be a multisig in production)
+            atomWarden: atomWarden, // atomWarden address (same as admin)
             atomWalletBeacon: address(atomWalletBeacon) // Address of the AtomWalletBeacon contract
         });
 
         IEthMultiVault.VaultFees memory vaultFees = IEthMultiVault.VaultFees({
             entryFee: 500, // Entry fee for vault 0
             exitFee: 500, // Exit fee for vault 0
-            protocolFee: 100 // Protocol fee for vault 0
+            protocolFee: 250 // Protocol fee for vault 0
         });
 
         // Prepare data for initializer function
@@ -102,7 +103,7 @@ contract DeployEthMultiVault is Script {
             EthMultiVault.init.selector, generalConfig, atomConfig, tripleConfig, walletConfig, vaultFees
         );
 
-        // log initData for contract verification on Etherscan
+        // Deploy EthMultiVault implementation contract
         ethMultiVault = new EthMultiVault();
         console.logString("deployed EthMultiVault.");
 
@@ -114,6 +115,26 @@ contract DeployEthMultiVault is Script {
         );
         console.logString("deployed TransparentUpgradeableProxy.");
 
+        // ======== Deploy CustomMulticall3 ========
+
+        // Prepare data for initializer function
+        bytes memory multicallInitData =
+            abi.encodeWithSelector(CustomMulticall3.init.selector, IEthMultiVault(address(ethMultiVaultProxy)), admin);
+
+        // deploy CustomMulticall3 implementation contract
+        CustomMulticall3 customMulticall3 = new CustomMulticall3();
+        console.logString("deployed CustomMulticall3.");
+
+        // deploy TransparentUpgradeableProxy for CustomMulticall3
+        TransparentUpgradeableProxy customMulticall3Proxy = new TransparentUpgradeableProxy(
+            address(customMulticall3), // logic contract address
+            admin, // initial owner of the ProxyAdmin instance tied to the proxy
+            multicallInitData // data to pass to the logic contract's initializer function
+        );
+
+        console.log("customMulticall3 implementation:", address(customMulticall3));
+        console.log("customMulticall3Proxy:", address(customMulticall3Proxy));
+
         // stop sending tx's
         vm.stopBroadcast();
 
@@ -124,7 +145,9 @@ contract DeployEthMultiVault is Script {
         console.log("EthMultiVault implementation address:", address(ethMultiVault));
         console.log("EthMultiVault proxy address:", address(ethMultiVaultProxy));
         console.log(
-            "To find the address of the ProxyAdmin contract for the EthMultiVault proxy, inspect the creation transaction of the EthMultiVault proxy contract on Basescan, in particular the AdminChanged event."
+            "To find the address of the ProxyAdmin contract for the EthMultiVault proxy, inspect the creation transaction of the EthMultiVault proxy contract on Basescan, in particular the AdminChanged event. Same applies to the CustomMulticall3 proxy contract."
         );
+        console.log("customMulticall3 implementation:", address(customMulticall3));
+        console.log("customMulticall3Proxy:", address(customMulticall3Proxy));
     }
 }

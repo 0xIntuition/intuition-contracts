@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.21;
 
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {Test, console} from "forge-std/Test.sol";
-import {EthMultiVault} from "src/EthMultiVault.sol";
-import {EthMultiVaultV2} from "../../EthMultiVaultV2.sol";
-import {IEthMultiVault} from "src/interfaces/IEthMultiVault.sol";
-import {AtomWallet} from "src/AtomWallet.sol";
-import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import {IPermit2} from "src/interfaces/IPermit2.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {
     TransparentUpgradeableProxy,
     ITransparentUpgradeableProxy
 } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
-import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+
+import {AtomWallet} from "src/AtomWallet.sol";
+import {EthMultiVault} from "src/EthMultiVault.sol";
+import {EthMultiVaultV2} from "test/EthMultiVaultV2.sol";
+import {IEthMultiVault} from "src/interfaces/IEthMultiVault.sol";
+import {IPermit2} from "src/interfaces/IPermit2.sol";
 
 contract UpgradeTo is Test {
     address user1 = address(1);
@@ -23,7 +24,7 @@ contract UpgradeTo is Test {
 
     // Multisig addresses for key roles in the protocol
     address admin = msg.sender;
-    address protocolVault = admin;
+    address protocolMultisig = admin;
     address atomWarden = admin;
 
     uint256 minDelay = 5 minutes; // 2 days for prod
@@ -77,7 +78,7 @@ contract UpgradeTo is Test {
         // Example configurations for EthMultiVault initialization (NOT meant to be used in production)
         IEthMultiVault.GeneralConfig memory generalConfig = IEthMultiVault.GeneralConfig({
             admin: admin, // Admin address for the EthMultiVault contract
-            protocolVault: protocolVault, // Protocol vault address (should be a multisig in production)
+            protocolMultisig: protocolMultisig, // Protocol multisig address (should be a multisig in production)
             feeDenominator: 10000, // Common denominator for fee calculations
             minDeposit: 0.0003 ether, // Minimum deposit amount in wei
             minShare: 1e5, // Minimum share amount (e.g., for vault initialization)
@@ -139,7 +140,7 @@ contract UpgradeTo is Test {
         // vm.startPrank(admin, admin);
 
         // bytes memory initDataV2 = abi.encodeWithSelector(
-        //     EthMultiVaultV2.init.selector, generalConfig, atomConfig, tripleConfig, walletConfig, vaultConfig
+        //     EthMultiVaultV2.initV2.selector, generalConfig, atomConfig, tripleConfig, walletConfig, vaultConfig
         // );
 
         // // prepare data for upgradeAndCall transaction

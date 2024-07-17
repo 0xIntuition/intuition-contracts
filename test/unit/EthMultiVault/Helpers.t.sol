@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.21;
 
-import "forge-std/Test.sol";
-import {EthMultiVaultBase} from "../../EthMultiVaultBase.sol";
-import {EthMultiVaultHelpers} from "../../helpers/EthMultiVaultHelpers.sol";
-import {Errors} from "../../../src/libraries/Errors.sol";
-import {AtomWallet} from "src/AtomWallet.sol";
 import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "forge-std/Test.sol";
+
+import {AtomWallet} from "src/AtomWallet.sol";
+import {Errors} from "src/libraries/Errors.sol";
+import {EthMultiVaultBase} from "test/EthMultiVaultBase.sol";
+import {EthMultiVaultHelpers} from "test/helpers/EthMultiVaultHelpers.sol";
 
 contract HelpersTest is EthMultiVaultBase, EthMultiVaultHelpers {
     function setUp() external {
@@ -49,26 +50,38 @@ contract HelpersTest is EthMultiVaultBase, EthMultiVaultHelpers {
         uint256 atomId = 1;
 
         // should not be able to deploy atom wallet for atom that has not been created yet
-        vm.expectRevert(abi.encodeWithSelector(Errors.MultiVault_VaultDoesNotExist.selector));
+        vm.expectRevert(abi.encodeWithSelector(Errors.EthMultiVault_VaultDoesNotExist.selector));
         // execute interaction - deploy atom wallet
         ethMultiVault.deployAtomWallet(atomId);
 
-        // execute interaction - create atom
-        ethMultiVault.createAtom{value: getAtomCost()}("atom1");
+        // execute interaction - create atoms and a triple
+        uint256 atomId1 = ethMultiVault.createAtom{value: getAtomCost()}("atom1");
+        uint256 atomId2 = ethMultiVault.createAtom{value: getAtomCost()}("atom2");
+        uint256 atomId3 = ethMultiVault.createAtom{value: getAtomCost()}("atom3");
+
+        uint256 tripleId = ethMultiVault.createTriple{value: getTripleCost()}(atomId1, atomId2, atomId3);
 
         address atomWalletAddress = ethMultiVault.deployAtomWallet(atomId);
-        address payable atomWallet = payable(atomWalletAddress);
 
         address computedAddress = ethMultiVault.computeAtomWalletAddr(atomId);
 
         // verify the returned atomWallet address is not zero
-        assertNotEq(atomWallet, address(0));
+        assertNotEq(atomWalletAddress, address(0));
 
         // verify atomWallet is a contract
-        assertTrue(isContract(atomWallet));
+        assertTrue(isContract(atomWalletAddress));
 
         // verify the computed address matches the actual wallet address
         assertEq(computedAddress, atomWalletAddress);
+
+        // should not be able to deploy an atom wallet for a triple vault
+        vm.expectRevert(abi.encodeWithSelector(Errors.EthMultiVault_VaultNotAtom.selector));
+        // execute interaction - deploy atom wallet
+        ethMultiVault.deployAtomWallet(tripleId);
+
+        // try to deploy atom wallet for an atom that has already been created (should return the same address)
+        address atomWalletAddressAlreadyCreated = ethMultiVault.deployAtomWallet(atomId);
+        assertEq(atomWalletAddress, atomWalletAddressAlreadyCreated);
     }
 
     function testAtomWalletOwnershipClaim() external {
@@ -90,21 +103,34 @@ contract HelpersTest is EthMultiVaultBase, EthMultiVaultHelpers {
         (bool success,) = atomWallet.call(abi.encodeWithSelector(AtomWallet.transferOwnership.selector, address(0xabc)));
         assertEq(success, true);
 
+        vm.stopPrank();
+
+        vm.startPrank(address(0xabc), address(0xabc));
+
+        (bool success2,) = atomWallet.call(abi.encodeWithSelector(AtomWallet.acceptOwnership.selector));
+        assertEq(success2, true);
+
         (, bytes memory returnData2) = atomWallet.call(abi.encodeWithSelector(AtomWallet.owner.selector));
 
         address newOwner = abi.decode(returnData2, (address));
 
+        // verify the new owner is set after the ownership claim is accepted
         assertEq(newOwner, address(0xabc));
-
-        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableInvalidOwner.selector));
-
-        (bool success2,) =
-            atomWallet.call(abi.encodeWithSelector(AtomWallet.transferOwnership.selector, address(0x456)));
-        assertEq(success2, false);
 
         vm.stopPrank();
 
-        // msg.sender = admin
+        vm.startPrank(atomWarden, atomWarden);
+
+        // should revert when the atom wallet has already been claimed
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableInvalidOwner.selector));
+
+        (bool success3,) =
+            atomWallet.call(abi.encodeWithSelector(AtomWallet.transferOwnership.selector, address(0x456)));
+        assertEq(success3, false);
+
+        vm.stopPrank();
+
+        // msg.sender = admin, can set a new atomWarden
         vm.startPrank(msg.sender, msg.sender);
 
         ethMultiVault.setAtomWarden(address(0xdef));
@@ -118,6 +144,7 @@ contract HelpersTest is EthMultiVaultBase, EthMultiVaultHelpers {
 
         address atomWardenAfterUpdate = ethMultiVault.getAtomWarden();
 
+        // verify the atomWarden has been updated
         assertEq(atomWardenAfterUpdate, address(0xdef));
 
         vm.stopPrank();
@@ -129,7 +156,7 @@ contract HelpersTest is EthMultiVaultBase, EthMultiVaultHelpers {
         vm.startPrank(alice, alice);
 
         // should revert if plain ether transfer is attempted
-        vm.expectRevert(abi.encodeWithSelector(Errors.MultiVault_ReceiveNotAllowed.selector));
+        vm.expectRevert(abi.encodeWithSelector(Errors.EthMultiVault_ReceiveNotAllowed.selector));
         payable(address(ethMultiVault)).transfer(1 ether);
 
         vm.stopPrank();

@@ -15,8 +15,8 @@ interface IEthMultiVault {
     struct GeneralConfig {
         /// @dev Admin address
         address admin;
-        /// @dev Protocol vault address
-        address protocolVault;
+        /// @dev Protocol multisig address
+        address protocolMultisig;
         /// @dev Fees are calculated by amount * (fee / feeDenominator);
         uint256 feeDenominator;
         /// @dev minimum amount of assets that must be deposited into an atom/triple vault
@@ -85,7 +85,7 @@ interface IEthMultiVault {
         ///      exit fee for each vault, exit fee for vault 0 is considered the default exit fee
         uint256 exitFee;
         /// @dev protocol fees are charged both when depositing assets and redeeming shares from the vault and
-        ///      they are sent to the protocol vault address, as defined in `generalConfig.protocolVault`
+        ///      they are sent to the protocol multisig address, as defined in `generalConfig.protocolMultisig`
         ///      protocol fee for each vault, protocol fee for vault 0 is considered the default protocol fee
         uint256 protocolFee;
     }
@@ -104,42 +104,60 @@ interface IEthMultiVault {
     /*                       EVENTS                        */
     /* =================================================== */
 
+    /// @notice Emitted when a receiver approves a sender to deposit assets on their behalf
+    ///
+    /// @param sender address of the sender
+    /// @param receiver address of the receiver
+    /// @param approved whether the sender is approved or not
+    event SenderApproved(address indexed sender, address indexed receiver, bool approved);
+
+    /// @notice Emitted when a receiver revokes a sender's approval to deposit assets on their behalf
+    ///
+    /// @param sender address of the sender
+    /// @param receiver address of the receiver
+    /// @param approved whether the sender is approved or not
+    event SenderRevoked(address indexed sender, address indexed receiver, bool approved);
+
     /// @notice Emitted upon the minting of shares in the vault by depositing assets
     ///
     /// @param sender initializer of the deposit
     /// @param receiver beneficiary of the minted shares
-    /// @param vaultBalance total assets held in the vault
-    /// @param userAssetsAfterTotalFees total assets that go towards minting shares for the receiver
-    /// @param sharesForReceiver total shares transferred
+    /// @param receiverTotalSharesInVault total shares held by the receiver in the vault
+    /// @param senderAssetsAfterTotalFees total assets that go towards minting shares for the receiver
+    /// @param sharesForReceiver total shares minted for the receiver
     /// @param entryFee total fee amount collected for entering the vault
-    /// @param id vault id
+    /// @param vaultId vault id of the vault being deposited into
+    /// @param isTriple whether the vault is a triple vault or not
+    /// @param isAtomWallet whether the receiver is an atom wallet or not
     event Deposited(
         address indexed sender,
         address indexed receiver,
-        uint256 vaultBalance,
-        uint256 userAssetsAfterTotalFees,
+        uint256 receiverTotalSharesInVault,
+        uint256 senderAssetsAfterTotalFees,
         uint256 sharesForReceiver,
         uint256 entryFee,
-        uint256 id
+        uint256 vaultId,
+        bool isTriple,
+        bool isAtomWallet
     );
 
     /// @notice Emitted upon the withdrawal of assets from the vault by redeeming shares
     ///
-    /// @param sender initializer of the withdrawal
-    /// @param owner owner of the shares that were redeemed
-    /// @param vaultBalance total assets held in the vault
+    /// @param sender initializer of the withdrawal (owner of the shares)
+    /// @param receiver beneficiary of the withdrawn assets (can be different from the sender)
+    /// @param senderTotalSharesInVault total shares held by the sender in the vault
     /// @param assetsForReceiver quantity of assets withdrawn by the receiver
-    /// @param shares quantity of shares redeemed
+    /// @param sharesRedeemedBySender quantity of shares redeemed by the sender
     /// @param exitFee total fee amount collected for exiting the vault
-    /// @param id vault id
+    /// @param vaultId vault id of the vault being redeemed from
     event Redeemed(
         address indexed sender,
-        address indexed owner,
-        uint256 vaultBalance,
+        address indexed receiver,
+        uint256 senderTotalSharesInVault,
         uint256 assetsForReceiver,
-        uint256 shares,
+        uint256 sharesRedeemedBySender,
         uint256 exitFee,
-        uint256 id
+        uint256 vaultId
     );
 
     /// @notice emitted upon creation of an atom
@@ -161,18 +179,130 @@ interface IEthMultiVault {
         address indexed creator, uint256 subjectId, uint256 predicateId, uint256 objectId, uint256 vaultID
     );
 
-    /// @notice emitted upon the transfer of fees to the protocol vault
+    /// @notice emitted upon the transfer of fees to the protocol multisig
     ///
     /// @param sender address of the sender
-    /// @param protocolVault address of the protocol vault
+    /// @param protocolMultisig address of the protocol multisig
     /// @param amount amount of fees transferred
-    event FeesTransferred(address indexed sender, address indexed protocolVault, uint256 amount);
+    event FeesTransferred(address indexed sender, address indexed protocolMultisig, uint256 amount);
+
+    /// @notice emitted upon scheduling an operation
+    ///
+    /// @param operationId unique identifier for the operation
+    /// @param data data to be executed
+    /// @param readyTime block number when the operation is ready
+    event OperationScheduled(bytes32 indexed operationId, bytes data, uint256 readyTime);
+
+    /// @notice emitted upon cancelling an operation
+    ///
+    /// @param operationId unique identifier for the operation
+    /// @param data data of the operation that was cancelled
+    event OperationCancelled(bytes32 indexed operationId, bytes data);
+
+    /// @notice emitted upon changing the admin
+    ///
+    /// @param newAdmin address of the new admin
+    /// @param oldAdmin address of the old admin
+    event AdminSet(address indexed newAdmin, address indexed oldAdmin);
+
+    /// @notice emitted upon changing the protocol multisig
+    ///
+    /// @param newProtocolMultisig address of the new protocol multisig
+    /// @param oldProtocolMultisig address of the old protocol multisig
+    event protocolMultisigSet(address indexed newProtocolMultisig, address indexed oldProtocolMultisig);
+
+    /// @notice emitted upon changing the minimum deposit amount
+    ///
+    /// @param newMinDeposit new minimum deposit amount
+    /// @param oldMinDeposit old minimum deposit amount
+    event MinDepositSet(uint256 newMinDeposit, uint256 oldMinDeposit);
+
+    /// @notice emitted upon changing the minimum share amount
+    ///
+    /// @param newMinShare new minimum share amount
+    /// @param oldMinShare old minimum share amount
+    event MinShareSet(uint256 newMinShare, uint256 oldMinShare);
+
+    /// @notice emitted upon changing the atom URI max length
+    ///
+    /// @param newAtomUriMaxLength new atom URI max length
+    /// @param oldAtomUriMaxLength old atom URI max length
+    event AtomUriMaxLengthSet(uint256 newAtomUriMaxLength, uint256 oldAtomUriMaxLength);
+
+    /// @notice emitted upon changing the atom share lock fee
+    ///
+    /// @param newAtomWalletInitialDepositAmount new atom share lock fee
+    /// @param oldAtomWalletInitialDepositAmount old atom share lock fee
+    event AtomWalletInitialDepositAmountSet(
+        uint256 newAtomWalletInitialDepositAmount, uint256 oldAtomWalletInitialDepositAmount
+    );
+
+    /// @notice emitted upon changing the atom creation fee
+    ///
+    /// @param newAtomCreationProtocolFee new atom creation fee
+    /// @param oldAtomCreationProtocolFee old atom creation fee
+    event AtomCreationProtocolFeeSet(uint256 newAtomCreationProtocolFee, uint256 oldAtomCreationProtocolFee);
+
+    /// @notice emitted upon changing the triple creation fee
+    ///
+    /// @param newTripleCreationProtocolFee new triple creation fee
+    /// @param oldTripleCreationProtocolFee old triple creation fee
+    event TripleCreationProtocolFeeSet(uint256 newTripleCreationProtocolFee, uint256 oldTripleCreationProtocolFee);
+
+    /// @notice emitted upon changing the atom deposit fraction on triple creation
+    ///
+    /// @param newAtomDepositFractionOnTripleCreation new atom deposit fraction on triple creation
+    /// @param oldAtomDepositFractionOnTripleCreation old atom deposit fraction on triple creation
+    event AtomDepositFractionOnTripleCreationSet(
+        uint256 newAtomDepositFractionOnTripleCreation, uint256 oldAtomDepositFractionOnTripleCreation
+    );
+
+    /// @notice emitted upon changing the atom deposit fraction for triples
+    ///
+    /// @param newAtomDepositFractionForTriple new atom deposit fraction for triples
+    /// @param oldAtomDepositFractionForTriple old atom deposit fraction for triples
+    event AtomDepositFractionForTripleSet(
+        uint256 newAtomDepositFractionForTriple, uint256 oldAtomDepositFractionForTriple
+    );
+
+    /// @notice emitted upon changing the entry fee
+    ///
+    /// @param id vault id to set entry fee for
+    /// @param newEntryFee new entry fee for the vault
+    /// @param oldEntryFee old entry fee for the vault
+    event EntryFeeSet(uint256 id, uint256 newEntryFee, uint256 oldEntryFee);
+
+    /// @notice emitted upon changing the exit fee
+    ///
+    /// @param id vault id to set exit fee for
+    /// @param newExitFee new exit fee for the vault
+    /// @param oldExitFee old exit fee for the vault
+    event ExitFeeSet(uint256 id, uint256 newExitFee, uint256 oldExitFee);
+
+    /// @notice emitted upon changing the protocol fee
+    ///
+    /// @param id vault id to set protocol fee for
+    /// @param newProtocolFee new protocol fee for the vault
+    /// @param oldProtocolFee old protocol fee for the vault
+    event ProtocolFeeSet(uint256 id, uint256 newProtocolFee, uint256 oldProtocolFee);
+
+    /// @notice emitted upon changing the atomWarden
+    ///
+    /// @param newAtomWarden address of the new atomWarden
+    /// @param oldAtomWarden address of the old atomWarden
+    event AtomWardenSet(address indexed newAtomWarden, address indexed oldAtomWarden);
+
+    /// @notice emitted upon deploying an atom wallet
+    ///
+    /// @param vaultId vault id of the atom
+    /// @param atomWallet address of the atom wallet
+    event AtomWalletDeployed(uint256 indexed vaultId, address indexed atomWallet);
 
     /* =================================================== */
     /*                    INITIALIZER                      */
     /* =================================================== */
 
-    /// @notice Initializes the MultiVault contract
+    /// @notice Initializes the EthMultiVault contract
     ///
     /// @param _generalConfig General configuration struct
     /// @param _atomConfig Atom configuration struct
@@ -215,9 +345,9 @@ interface IEthMultiVault {
     /// @param admin address of the new admin
     function setAdmin(address admin) external;
 
-    /// @dev set protocol vault
-    /// @param protocolVault address of the new protocol vault
-    function setProtocolVault(address protocolVault) external;
+    /// @dev set protocol multisig
+    /// @param protocolMultisig address of the new protocol multisig
+    function setProtocolMultisig(address protocolMultisig) external;
 
     /// @dev sets the minimum deposit amount for atoms and triples
     /// @param minDeposit new minimum deposit amount
@@ -239,7 +369,7 @@ interface IEthMultiVault {
     /// @param atomCreationProtocolFee new atom creation fee
     function setAtomCreationProtocolFee(uint256 atomCreationProtocolFee) external;
 
-    /// @dev sets fee charged in wei when creating a triple to protocol vault
+    /// @dev sets fee charged in wei when creating a triple to protocol multisig
     /// @param tripleCreationProtocolFee new fee in wei
     function setTripleCreationProtocolFee(uint256 tripleCreationProtocolFee) external;
 
@@ -296,6 +426,14 @@ interface IEthMultiVault {
     /// @return atomWallet the address of the atom wallet
     /// NOTE: deploys an ERC4337 account (atom wallet) through a BeaconProxy. Reverts if the atom vault does not exist
     function deployAtomWallet(uint256 atomId) external returns (address);
+
+    /// @notice approve a sender to deposit assets on behalf of the receiver
+    /// @param sender address of the sender
+    function approveSender(address sender) external;
+
+    /// @notice revoke a sender's approval to deposit assets on behalf of the receiver
+    /// @param sender address of the sender
+    function revokeSender(address sender) external;
 
     /// @notice Create an atom and return its vault id
     /// @param atomUri atom data to create atom with
@@ -371,7 +509,7 @@ interface IEthMultiVault {
     function depositTriple(address receiver, uint256 id) external payable returns (uint256);
 
     /// @notice redeems 'shares' number of shares from the triple vault and send 'assets' eth
-    ///         from the multiVault to 'reciever' factoring in exit fees
+    ///         from the contract to 'reciever' factoring in exit fees
     ///
     /// @param shares the amount of shares to redeem
     /// @param receiver the address to receiver the assets
@@ -423,7 +561,7 @@ interface IEthMultiVault {
     ///
     /// @return totalUserAssets total amount of assets user would receive if redeeming 'shares', not including fees
     /// @return assetsForReceiver amount of assets that is redeemable by the receiver
-    /// @return protocolFee amount of assets that would be sent to the protocol vault
+    /// @return protocolFee amount of assets that would be sent to the protocol multisig
     /// @return exitFee amount of assets that would be charged for the exit fee
     function getRedeemAssetsAndFees(uint256 shares, uint256 id)
         external

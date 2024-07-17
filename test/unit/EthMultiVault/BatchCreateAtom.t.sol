@@ -2,9 +2,10 @@
 pragma solidity ^0.8.21;
 
 import "forge-std/Test.sol";
-import {EthMultiVaultBase} from "../../EthMultiVaultBase.sol";
-import {EthMultiVaultHelpers} from "../../helpers/EthMultiVaultHelpers.sol";
-import {Errors} from "../../../src/libraries/Errors.sol";
+
+import {Errors} from "src/libraries/Errors.sol";
+import {EthMultiVaultBase} from "test/EthMultiVaultBase.sol";
+import {EthMultiVaultHelpers} from "test/helpers/EthMultiVaultHelpers.sol";
 
 contract BatchCreateAtomTest is EthMultiVaultBase, EthMultiVaultHelpers {
     function setUp() external {
@@ -24,7 +25,7 @@ contract BatchCreateAtomTest is EthMultiVaultBase, EthMultiVaultHelpers {
         uint256 testAtomCost = getAtomCost();
 
         // snapshots before creating a triple
-        uint256 protocolVaultBalanceBefore = address(getProtocolVault()).balance;
+        uint256 protocolMultisigBalanceBefore = address(getProtocolMultisig()).balance;
 
         uint256[] memory totalAssetsBefore = new uint256[](atomsToCreate);
         uint256[] memory totalSharesBefore = new uint256[](atomsToCreate);
@@ -43,7 +44,7 @@ contract BatchCreateAtomTest is EthMultiVaultBase, EthMultiVaultHelpers {
 
         uint256 userDepositPerAtom = testAtomCost - getAtomCost();
 
-        checkProtocolVaultBalanceOnVaultBatchCreation(ids, userDepositPerAtom, protocolVaultBalanceBefore);
+        checkProtocolMultisigBalanceOnVaultBatchCreation(ids, userDepositPerAtom, protocolMultisigBalanceBefore);
 
         vm.stopPrank();
     }
@@ -60,7 +61,7 @@ contract BatchCreateAtomTest is EthMultiVaultBase, EthMultiVaultHelpers {
 
         uint256 testAtomCost = getAtomCost();
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.MultiVault_InsufficientBalance.selector));
+        vm.expectRevert(abi.encodeWithSelector(Errors.EthMultiVault_InsufficientBalance.selector));
         ethMultiVault.batchCreateAtom{value: testAtomCost * (atomsToCreate - 1)}(atomData);
 
         vm.stopPrank();

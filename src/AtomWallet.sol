@@ -5,7 +5,8 @@ import {BaseAccount, UserOperation} from "account-abstraction/contracts/core/Bas
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {IEntryPoint} from "account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
 import {Errors} from "src/libraries/Errors.sol";
 import {IEthMultiVault} from "src/interfaces/IEthMultiVault.sol";
@@ -16,7 +17,7 @@ import {IEthMultiVault} from "src/interfaces/IEthMultiVault.sol";
  * @notice Core contract of the Intuition protocol. This contract is an abstract account
  *         associated with a corresponding atom.
  */
-contract AtomWallet is Initializable, BaseAccount, OwnableUpgradeable {
+contract AtomWallet is Initializable, BaseAccount, Ownable2StepUpgradeable, ReentrancyGuardUpgradeable {
     using ECDSA for bytes32;
 
     /// @notice The EthMultiVault contract address
@@ -25,12 +26,21 @@ contract AtomWallet is Initializable, BaseAccount, OwnableUpgradeable {
     /// @notice The flag to indicate if the wallet's ownership has been claimed by the user
     bool public isClaimed;
 
-    /// @notice The storage slot for the AtomWallet contract ownable storage
-    ///         keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.Ownable")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant OwnableStorageLocation = 0x9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c199300;
+    /// @notice The storage slot for the AtomWallet owner
+    // keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.Ownable")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant AtomWalletOwnerStorageLocation =
+        0x9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c199300;
+
+    /// @notice The storage slot for the AtomWallet pending owner
+    // keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.Ownable2Step")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant AtomWalletPendingOwnerStorageLocation =
+        0x237e158222e3e6968b72b9db0d8043aacf074ad9f650f0d1606b4d82ee432c00;
 
     /// @notice The entry point contract address
     IEntryPoint private _entryPoint;
+
+    /// @dev Gap for upgrade safety
+    uint256[50] private __gap;
 
     /// @dev Modifier to allow only the owner or entry point to call a function
     modifier onlyOwnerOrEntryPoint() {
@@ -43,10 +53,11 @@ contract AtomWallet is Initializable, BaseAccount, OwnableUpgradeable {
     /// @notice Initialize the AtomWallet contract
     ///
     /// @param anEntryPoint the entry point contract address
-    /// @param anOwner the owner of the contract (`walletConfig.atomWarden` is the initial owner of all atom wallets)
     /// @param _ethMultiVault the EthMultiVault contract address
-    function init(IEntryPoint anEntryPoint, address anOwner, IEthMultiVault _ethMultiVault) external initializer {
-        __Ownable_init(anOwner);
+    function init(IEntryPoint anEntryPoint, IEthMultiVault _ethMultiVault) external initializer {
+        __Ownable_init(_ethMultiVault.getAtomWarden());
+        __ReentrancyGuard_init();
+
         _entryPoint = anEntryPoint;
         ethMultiVault = _ethMultiVault;
     }
@@ -58,7 +69,12 @@ contract AtomWallet is Initializable, BaseAccount, OwnableUpgradeable {
     /// @param dest the target address
     /// @param value the value to send
     /// @param func the function call data
-    function execute(address dest, uint256 value, bytes calldata func) external onlyOwnerOrEntryPoint {
+    function execute(address dest, uint256 value, bytes calldata func)
+        external
+        payable
+        onlyOwnerOrEntryPoint
+        nonReentrant
+    {
         _call(dest, value, func);
     }
 
@@ -66,13 +82,18 @@ contract AtomWallet is Initializable, BaseAccount, OwnableUpgradeable {
     ///
     /// @param dest the target addresses array
     /// @param func the function call data array
-    function executeBatch(address[] calldata dest, bytes[] calldata func) external onlyOwnerOrEntryPoint {
-        if (dest.length != func.length) {
+    function executeBatch(address[] calldata dest, uint256[] calldata values, bytes[] calldata func)
+        external
+        payable
+        onlyOwnerOrEntryPoint
+        nonReentrant
+    {
+        if (dest.length != values.length || values.length != func.length) {
             revert Errors.AtomWallet_WrongArrayLengths();
         }
 
         for (uint256 i = 0; i < dest.length; i++) {
-            _call(dest[i], 0, func[i]);
+            _call(dest[i], values[i], func[i]);
         }
     }
 
@@ -92,21 +113,36 @@ contract AtomWallet is Initializable, BaseAccount, OwnableUpgradeable {
         entryPoint().withdrawTo(withdrawAddress, amount);
     }
 
-    /// @notice Transfer ownership of the wallet to a new owner. Ifn the wallet's ownership
-    ///         is being transferred to the user, the wallet is considered claimed. Once claimed,
-    ///         wallet is considered owned by the user and the action cannot be undone.
-    /// @param newOwner the new owner of the wallet
-    /// NOTE: Overrides the transferOwnership function of OwnableUpgradeable
+    /// @notice Initiates the ownership transfer over the wallet to a new owner.
+    /// @param newOwner the new owner of the wallet (becomes the pending owner)
+    /// NOTE: Overrides the transferOwnership function of Ownable2StepUpgradeable
     function transferOwnership(address newOwner) public override onlyOwner {
         if (newOwner == address(0)) {
             revert OwnableInvalidOwner(address(0));
         }
 
-        if (!isClaimed && newOwner != ethMultiVault.getAtomWarden()) {
+        Ownable2StepStorage storage $ = _getAtomWalletPendingOwnerStorage();
+        $._pendingOwner = newOwner;
+
+        emit OwnershipTransferStarted(owner(), newOwner);
+    }
+
+    /// @notice The new owner accepts the ownership over the wallet. If the wallet's ownership
+    ///         is being accepted by the user, the wallet is considered claimed. Once claimed,
+    ///         wallet is considered owned by the user and this action cannot be undone.
+    /// NOTE: Overrides the acceptOwnership function of Ownable2StepUpgradeable
+    function acceptOwnership() public override {
+        address sender = _msgSender();
+
+        if (pendingOwner() != sender) {
+            revert OwnableUnauthorizedAccount(sender);
+        }
+
+        if (!isClaimed) {
             isClaimed = true;
         }
 
-        _transferOwnership(newOwner);
+        super._transferOwnership(sender);
     }
 
     /// @notice Returns the deposit of the account in the entry point contract
@@ -126,7 +162,7 @@ contract AtomWallet is Initializable, BaseAccount, OwnableUpgradeable {
     /// @return the owner of the wallet
     /// NOTE: Overrides the owner function of OwnableUpgradeable
     function owner() public view override returns (address) {
-        OwnableStorage storage $ = _getAtomWalletOwnableStorage();
+        OwnableStorage storage $ = _getAtomWalletOwnerStorage();
         return isClaimed ? $._owner : ethMultiVault.getAtomWarden();
     }
 
@@ -143,9 +179,25 @@ contract AtomWallet is Initializable, BaseAccount, OwnableUpgradeable {
         override
         returns (uint256 validationData)
     {
+        (uint256 validUntil, uint256 validAfter,) = extractValidUntilAndValidAfter(userOp.callData);
+
+        // validUntil can be 0, meaning there won't be an expiration
+        if (block.timestamp <= validAfter || (block.timestamp >= validUntil && validUntil != 0)) {
+            return SIG_VALIDATION_FAILED;
+        }
+
         bytes32 hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", userOpHash));
 
-        (address recovered,,) = ECDSA.tryRecover(hash, userOp.signature);
+        (address recovered, ECDSA.RecoverError recoverError, bytes32 errorArg) =
+            ECDSA.tryRecover(hash, userOp.signature);
+
+        if (recoverError == ECDSA.RecoverError.InvalidSignature) {
+            revert Errors.AtomWallet_InvalidSignature();
+        } else if (recoverError == ECDSA.RecoverError.InvalidSignatureLength) {
+            revert Errors.AtomWallet_InvalidSignatureLength(uint256(errorArg));
+        } else if (recoverError == ECDSA.RecoverError.InvalidSignatureS) {
+            revert Errors.AtomWallet_InvalidSignatureS(errorArg);
+        }
 
         if (recovered != owner()) {
             return SIG_VALIDATION_FAILED;
@@ -168,11 +220,41 @@ contract AtomWallet is Initializable, BaseAccount, OwnableUpgradeable {
         }
     }
 
-    /// @dev Get the storage slot for the AtomWallet contract ownable storage
+    /// @notice Extract the validUntil and validAfter from the call data
+    /// @param callData the call data
+    ///
+    /// @return validUntil the valid until timestamp
+    /// @return validAfter the valid after timestamp
+    /// @return actualCallData the actual call data of the user operation
+    function extractValidUntilAndValidAfter(bytes calldata callData)
+        internal
+        pure
+        returns (uint256 validUntil, uint256 validAfter, bytes memory actualCallData)
+    {
+        if (callData.length < 24) {
+            revert Errors.AtomWallet_InvalidCallDataLength();
+        }
+
+        validUntil = abi.decode(callData[:12], (uint256));
+        validAfter = abi.decode(callData[12:24], (uint256));
+        actualCallData = callData[24:];
+
+        return (validUntil, validAfter, actualCallData);
+    }
+
+    /// @dev Get the storage slot for the AtomWallet contract owner
     /// @return $ the storage slot
-    function _getAtomWalletOwnableStorage() private pure returns (OwnableStorage storage $) {
+    function _getAtomWalletOwnerStorage() private pure returns (OwnableStorage storage $) {
         assembly {
-            $.slot := OwnableStorageLocation
+            $.slot := AtomWalletOwnerStorageLocation
+        }
+    }
+
+    /// @dev Get the storage slot for the AtomWallet contract pending owner
+    /// @return $ the storage slot
+    function _getAtomWalletPendingOwnerStorage() private pure returns (Ownable2StepStorage storage $) {
+        assembly {
+            $.slot := AtomWalletPendingOwnerStorageLocation
         }
     }
 }

@@ -2,9 +2,10 @@
 pragma solidity ^0.8.21;
 
 import "forge-std/Test.sol";
-import {EthMultiVaultBase} from "../../EthMultiVaultBase.sol";
-import {EthMultiVaultHelpers} from "../../helpers/EthMultiVaultHelpers.sol";
-import {Errors} from "../../../src/libraries/Errors.sol";
+
+import {Errors} from "src/libraries/Errors.sol";
+import {EthMultiVaultBase} from "test/EthMultiVaultBase.sol";
+import {EthMultiVaultHelpers} from "test/helpers/EthMultiVaultHelpers.sol";
 
 contract DepositTripleTest is EthMultiVaultBase, EthMultiVaultHelpers {
     function setUp() external {
@@ -31,12 +32,26 @@ contract DepositTripleTest is EthMultiVaultBase, EthMultiVaultHelpers {
         // snapshots before interaction
         uint256 totalAssetsBefore = vaultTotalAssets(id);
         uint256 totalSharesBefore = vaultTotalShares(id);
-        uint256 protocolVaultBalanceBefore = address(getProtocolVault()).balance;
+        uint256 protocolMultisigBalanceBefore = address(getProtocolMultisig()).balance;
 
         uint256[3] memory totalAssetsBeforeAtomVaults =
             [vaultTotalAssets(subjectId), vaultTotalAssets(predicateId), vaultTotalAssets(objectId)];
         uint256[3] memory totalSharesBeforeAtomVaults =
             [vaultTotalShares(subjectId), vaultTotalShares(predicateId), vaultTotalShares(objectId)];
+
+        vm.startPrank(address(1), address(1));
+
+        // execute interaction - approve sender
+        ethMultiVault.approveSender(bob);
+
+        vm.stopPrank();
+
+        vm.startPrank(address(2), address(2));
+
+        // execute interaction - approve sender
+        ethMultiVault.approveSender(bob);
+
+        vm.stopPrank();
 
         vm.startPrank(bob, bob);
 
@@ -47,7 +62,7 @@ contract DepositTripleTest is EthMultiVaultBase, EthMultiVaultHelpers {
 
         checkDepositIntoVault(userDepositAfterprotocolFee, id, totalAssetsBefore, totalSharesBefore);
 
-        checkProtocolVaultBalance(id, testDepositAmount, protocolVaultBalanceBefore);
+        checkProtocolMultisigBalance(id, testDepositAmount, protocolMultisigBalanceBefore);
 
         // ------ Check Deposit Atom Fraction ------ //
         uint256 amountToDistribute = atomDepositFractionAmount(userDepositAfterprotocolFee, id);
@@ -74,6 +89,13 @@ contract DepositTripleTest is EthMultiVaultBase, EthMultiVaultHelpers {
     }
 
     function testDepositTripleZeroShares() external {
+        vm.startPrank(address(1), address(1));
+
+        // execute interaction - approve sender
+        ethMultiVault.approveSender(alice);
+
+        vm.stopPrank();
+
         vm.startPrank(alice, alice);
 
         // test values
@@ -88,7 +110,7 @@ contract DepositTripleTest is EthMultiVaultBase, EthMultiVaultHelpers {
         // execute interaction - create a triple
         uint256 id = ethMultiVault.createTriple{value: testDepositAmountTriple}(subjectId, predicateId, objectId);
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.MultiVault_MinimumDeposit.selector));
+        vm.expectRevert(abi.encodeWithSelector(Errors.EthMultiVault_MinimumDeposit.selector));
         // execute interaction - deposit triple
         ethMultiVault.depositTriple{value: 0}(address(1), id);
 
@@ -96,6 +118,13 @@ contract DepositTripleTest is EthMultiVaultBase, EthMultiVaultHelpers {
     }
 
     function testDepositTripleBelowMinimumDeposit() external {
+        vm.startPrank(address(1), address(1));
+
+        // execute interaction - approve sender
+        ethMultiVault.approveSender(alice);
+
+        vm.stopPrank();
+
         vm.startPrank(alice, alice);
 
         // test values
@@ -112,7 +141,7 @@ contract DepositTripleTest is EthMultiVaultBase, EthMultiVaultHelpers {
         // execute interaction - create a triple
         uint256 id = ethMultiVault.createTriple{value: testDepositAmountTriple}(subjectId, predicateId, objectId);
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.MultiVault_MinimumDeposit.selector));
+        vm.expectRevert(abi.encodeWithSelector(Errors.EthMultiVault_MinimumDeposit.selector));
         // execute interaction - deposit triple
         ethMultiVault.depositTriple{value: testDepositAmount - 1}(address(1), id);
 
@@ -120,6 +149,13 @@ contract DepositTripleTest is EthMultiVaultBase, EthMultiVaultHelpers {
     }
 
     function testDepositTripleIsNotTriple() external {
+        vm.startPrank(address(1), address(1));
+
+        // execute interaction - approve sender
+        ethMultiVault.approveSender(alice);
+
+        vm.stopPrank();
+
         vm.startPrank(alice, alice);
 
         // test values
@@ -134,7 +170,7 @@ contract DepositTripleTest is EthMultiVaultBase, EthMultiVaultHelpers {
         // execute interaction - create a triple
         ethMultiVault.createTriple{value: testDepositAmountTriple}(subjectId, predicateId, objectId);
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.MultiVault_VaultNotTriple.selector));
+        vm.expectRevert(abi.encodeWithSelector(Errors.EthMultiVault_VaultNotTriple.selector));
         // execute interaction - deposit triple
         ethMultiVault.depositTriple{value: testDepositAmountTriple}(address(1), subjectId);
 
