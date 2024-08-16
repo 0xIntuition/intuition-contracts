@@ -18,6 +18,9 @@ The Intuition Knowledge Graph will be recognized as an organic flywheel, where t
       - [Install Dependencies](#install-dependencies)
       - [Build](#build)
       - [Run Tests](#run-tests)
+      - [Run Fuzz Tests](#run-fuzz-tests)
+      - [Run Slither (Static Analysis)](#run-slither-static-analysis)
+      - [Run Manticore (Symbolic Execution)](#run-manticore-symbolic-execution)
     - [Deployment Process](#deployment-process)
     - [Deployment Verification](#deployment-verification)
 
@@ -30,13 +33,14 @@ The main branches we use are:
 ## Documentation
 
 To get a basic understanding of the Intuition protocol, please check out the following:
+
 - [Official Website](https://intuition.systems)
 - [Official Documentation](https://docs.intuition.systems)
 - [Deep Dive into Our Smart Contracts](https://intuition.gitbook.io/intuition-contracts)
 
-### Known Nuances 
+### Known Nuances
 
-- Share prices may get arbitrarily large as deposits/withdraws occur after Vault asset and share amounts approach 0 (ie if all users have withdrawn from the Vault), but this still elegantly achieves our desired functionality  - which is, Users earn fee revenue when they are shareholders of a vault and deposit/redeem activities occur while they remain shareholders. This novel share price mechanism is used in lieu of a side-pocket reward pool for gas efficiency.
+- Share prices may get arbitrarily large as deposits/withdraws occur after Vault asset and share amounts approach 0 (i.e. if all users have withdrawn from the Vault), but this still elegantly achieves our desired functionality  - which is, Users earn fee revenue when they are shareholders of a vault and deposit/redeem activities occur while they remain shareholders. This novel share price mechanism is used in lieu of a side-pocket reward pool for gas efficiency.
 - The Admin can pause the contracts, though there is an emergency withdraw that allows users to withdraw from the contract even while paused. This emergency withdraw bypasses all fees, to reduce the surface area of attack.
 - Exit fees are configurable, but have a maximum limit which they can be set to, preventing loss of user funds. Users also have the timelock window to withdraw from the contracts if they do not agree with a parameter change.
  
@@ -70,9 +74,57 @@ $ forge build
 $ forge test -vvv
 ```
 
+#### Run Fuzz Tests
+
+- Make sure you have at least node 16 and python 3.6 installed on your local machine
+- Add your FUZZ_AP_KEY to the .env file locally
+- Run the following command to install the `diligence-fuzzing` package:
+
+```shell
+$ pip3 install diligence-fuzzing
+```
+
+- After the installation is completed, run the fuzzing CLI:
+
+```shell
+$ fuzz forge test
+```
+
+- Finally, check your Diligence Fuzzing dashboard to see the results of the fuzzing tests
+
+#### Run Slither (Static Analysis)
+
+- Install the `slither-analyzer` package:
+  
+```shell
+  $ pip3 install slither-analyzer
+```
+
+- After the installation is completed, run the slither analysis bash script:
+
+```shell
+  $ npm run slither
+```
+
+#### Run Manticore (Symbolic Execution)
+
+- Make sure you have [Docker](https://docker.com/products/docker-desktop) installed on your local machine
+
+- Build the Docker image:
+
+```shell
+  $ docker build -t manticore-analysis .
+```
+
+- Run the Docker container:
+
+```shell
+  $ docker run --rm -v "$(pwd)":/app manticore-analysis
+```
+
 ### Deployment Process
 
-To deploy the v1 smart contract system on to a public testnet or mainnet, you’ll need the following:
+To deploy the Beta smart contract system on to a public testnet or mainnet, you’ll need the following:
 - RPC URL of the network that you’re trying to deploy to (as for us, we’re targeting Base Sepolia testnet as our target chain for the testnet deployments)
 - Export `PRIVATE_KEY` of a deployer account in the terminal, and fund it with some test ETH to be able to cover the gas fees for the smart contract deployments
 - For Base Sepolia, there is a reliable [testnet faucet](https://alchemy.com/faucets/base-sepolia) deployed by Alchemy
@@ -91,5 +143,6 @@ $ forge verify-contract <0x_contract_address> ContractName --watch --chain-id <c
 ```
 
 **Notes:**
+
 - When verifying your smart contracts, you can use an optional parameter `--constructor-args` to pass the constructor arguments of the smart contract in the ABI-encoded format
 - The chain ID for Base Sepolia is `84532`, whereas the chain ID for Base Mainnet is `8453`
