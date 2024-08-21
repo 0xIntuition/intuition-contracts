@@ -61,14 +61,4 @@ library Errors {
     error CustomMulticall3_InvalidValue();
     error CustomMulticall3_InvalidValuesLength();
     error CustomMulticall3_ZeroLengthArray();
-
-    ///////// ATTESTOOR ERRORS ////////////////////////////////////////////////////////////////////
-
-    error Attestoor_DeployAttestoorFailed();
-    error Attestoor_EmptyAttestorsArray();
-    error Attestoor_InsufficientValue();
-    error Attestoor_InvalidEthMultiVaultAddress();
-    error Attestoor_NotAWhitelistedAttestor();
-    error Attestoor_SharesCannotBeRedeeemed();
-    error Attestoor_WrongArrayLengths();
 }
