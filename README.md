@@ -6,6 +6,8 @@ In bringing this new data layer to the decentralized web, we’re opening the fl
 
 The Intuition Knowledge Graph will be recognized as an organic flywheel, where the more developers that implement it, the more valuable the data it houses becomes.
 
+**NOTE:** This branch represents the exact codebase that was audited by Trail of Bits in March and April 2024.
+
 ## Getting Started
 - [Intuition Protocol](#intuition-protocol)
   - [Getting Started](#getting-started)
