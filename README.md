@@ -38,6 +38,14 @@ To get a basic understanding of the Intuition protocol, please check out the fol
 - [Official Documentation](https://docs.intuition.systems)
 - [Deep Dive into Our Smart Contracts](https://intuition.gitbook.io/intuition-contracts)
 
+**The ‘Multi Vault’**
+
+To bring our vision to life, Intuition proudly presents the ‘Multi Vault’—a revolutionary framework that seamlessly blends the ERC-1155 and ERC-4626 standards into a dynamic, scalable solution capable of managing millions of vaults with unprecedented efficiency. By consolidating vault management into a single contract, we address the inherent scalability and cost challenges faced by traditional systems.
+
+Our current implementation carefully integrates key aspects of ERC-1155 and ERC-4626, with a clear ambition: to evolve into a fully compatible and interoperable standard. Through this journey, we aim not only to adhere to established protocols but to push the boundaries, creating a new benchmark that enhances the ecosystem's utility and efficiency.
+
+Additionally, we have successfully integrated ERC-4337 into the AtomWallet contract. This contract is an abstract account associated with a corresponding atom, further advancing the capabilities of our protocol.
+
 ### Known Nuances
 
 - Share prices may get arbitrarily large as deposits/withdraws occur after Vault asset and share amounts approach 0 (i.e. if all users have withdrawn from the Vault), but this still elegantly achieves our desired functionality  - which is, Users earn fee revenue when they are shareholders of a vault and deposit/redeem activities occur while they remain shareholders. This novel share price mechanism is used in lieu of a side-pocket reward pool for gas efficiency.
