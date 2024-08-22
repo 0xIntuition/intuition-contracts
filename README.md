@@ -11,6 +11,7 @@ The Intuition Knowledge Graph will be recognized as an organic flywheel, where t
   - [Getting Started](#getting-started)
   - [Branching](#branching)
   - [Documentation](#documentation)
+  - [Audit Report](#audit-report)
     - [Known Nuances](#known-nuances)
   - [Building and Running Tests](#building-and-running-tests)
     - [Prerequisites](#prerequisites)
@@ -45,6 +46,10 @@ To bring our vision to life, Intuition proudly presents the ‘Multi Vault’—
 Our current implementation carefully integrates key aspects of ERC-1155 and ERC-4626, with a clear ambition: to evolve into a fully compatible and interoperable standard. Through this journey, we aim not only to adhere to established protocols but to push the boundaries, creating a new benchmark that enhances the ecosystem's utility and efficiency.
 
 Additionally, we have successfully integrated ERC-4337 into the AtomWallet contract. This contract is an abstract account associated with a corresponding atom, further advancing the capabilities of our protocol.
+
+## Audit Report
+
+The Intuition Protocol underwent a comprehensive security audit by Trail of Bits. The full audit report can be accessed [here](https://github.com/trailofbits/publications/blob/master/reviews/2024-03-intuition-smart-contracts-securityreview.pdf).
 
 ### Known Nuances
 
