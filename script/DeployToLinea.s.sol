@@ -50,7 +50,7 @@ contract DeployToLinea is Script {
         if (chainId != 59_144) revert UnsupportedChainId();
 
         // TimelockController parameters
-        uint256 minDelay = 7 days;
+        uint256 minDelay = 1 minutes; // NOTE: Should be changed to 7 days later
         address[] memory proposers = new address[](1);
         address[] memory executors = new address[](1);
 
@@ -86,7 +86,7 @@ contract DeployToLinea is Script {
             minShare: 1e6, // Minimum share amount (e.g., for vault initialization)
             atomUriMaxLength: 250, // Maximum length of the atom URI data that can be passed when creating atom vaults
             decimalPrecision: 1e18, // decimal precision used for calculating share prices
-            minDelay: 3 days // minimum delay for timelocked transactions
+            minDelay: 1 minutes // NOTE: Should be changed to 3 days later
         });
 
         IEthMultiVault.AtomConfig memory atomConfig = IEthMultiVault.AtomConfig({
@@ -95,7 +95,7 @@ contract DeployToLinea is Script {
         });
 
         IEthMultiVault.TripleConfig memory tripleConfig = IEthMultiVault.TripleConfig({
-            tripleCreationProtocolFee: 0.004 ether, // Fee for creating a triple
+            tripleCreationProtocolFee: 0.000003 ether, // Fee for creating a triple
             atomDepositFractionOnTripleCreation: 0, // Static fee going towards increasing the amount of assets in the underlying atom vaults
             atomDepositFractionForTriple: 0 // Fee for equity in atoms when creating a triple
         });

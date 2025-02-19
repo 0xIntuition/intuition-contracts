@@ -95,8 +95,24 @@ contract EthMultiVault is IEthMultiVault, Initializable, ReentrancyGuardUpgradea
     }
 
     /* =================================================== */
+    /*                    CONSTRUCTOR                      */
+    /* =================================================== */
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    /* =================================================== */
     /*                    INITIALIZER                      */
     /* =================================================== */
+
+    /// @notice Reinitialize the contract with a new minimum delay for timelocked transactions
+    /// @param newMinDelay new minimum delay for timelocked transactions
+    /// NOTE: This function is called only once (during contract reinitialization)
+    function reinitialize(uint256 newMinDelay) external reinitializer(2) onlyAdmin {
+        generalConfig.minDelay = newMinDelay;
+    }
 
     /// @notice Initializes the EthMultiVault contract
     ///
